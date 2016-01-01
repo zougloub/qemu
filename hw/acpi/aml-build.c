@@ -1427,6 +1427,9 @@ Aml *aml_alias(const char *source_object, const char *alias_object)
     return var;
 }
 
+extern size_t slic_table_offset;
+extern char unsigned *acpi_tables;
+
 void
 build_header(GArray *linker, GArray *table_data,
              AcpiTableHeader *h, const char *sig, int len, uint8_t rev,
@@ -1447,6 +1450,11 @@ build_header(GArray *linker, GArray *table_data,
     h->oem_revision = cpu_to_le32(1);
     memcpy(h->asl_compiler_id, ACPI_BUILD_APPNAME4, 4);
     h->asl_compiler_revision = cpu_to_le32(1);
+    if (slic_table_offset && (!memcmp(sig, "RSDT", 4) || !memcmp(sig, "FACP", 4))) {
+      /* for win7: OEM info in RSDT and SLIC should be the same */
+      AcpiTableHeader *s = (AcpiTableHeader *)(acpi_tables + slic_table_offset);
+      memcpy(h->oem_id, s->oem_id, 6 + 4 + 4);
+    }
     h->checksum = 0;
     /* Checksum to be filled in by Guest linker */
     bios_linker_loader_add_checksum(linker, ACPI_BUILD_TABLE_FILE,
